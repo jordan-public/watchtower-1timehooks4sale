@@ -15,10 +15,12 @@ contract LoanPair is ILoanPair {
     // Lending state
     uint256 public interestPerBlock;
     mapping(address => Loan) public loans;
-    uint256 public collateralizationRatio;
+    uint256 public initCollateralizationRatio;
+    uint256 public minCollateralizationRatio;
+    uint256 public liquidationPenaltyRatio;
     
-    // Mock exchange rate (1:1 for simplicity)
-    uint256 public constant MOCK_EXCHANGE_RATE = 1e18;
+    // Exchange rate state
+    uint256 private mockExchangeRate;
 
     constructor(
         IERC20 _loanToken, 
@@ -29,16 +31,31 @@ contract LoanPair is ILoanPair {
         loanToken = _loanToken;
         collateralToken = _collateralToken;
         setInterestRate(100); // 10% interest per block
-        setCollateralizationRatio(150); // 150% collateralization ratio
+        setInitCollateralizationRatio(150); // 150% initial collateralization ratio
+        setMinCollateralizationRatio(110); // 110% minimum collateralization ratio
+        setLiquidationPenaltyRatio(50); // 5% liquidation penalty
+        mockExchangeRate = 1e18; // Initial 1:1 exchange rate
     }
 
     function setInterestRate(uint256 _interestPerBlock) public {
         interestPerBlock = _interestPerBlock;
     }
 
-    function setCollateralizationRatio(uint256 _ratio) public {
+    function setInitCollateralizationRatio(uint256 _ratio) public {
         require(_ratio >= 100, "Ratio must be >= 100%");
-        collateralizationRatio = _ratio;
+        require(_ratio > minCollateralizationRatio, "Must be > min ratio");
+        initCollateralizationRatio = _ratio;
+    }
+
+    function setMinCollateralizationRatio(uint256 _ratio) public {
+        require(_ratio >= 100, "Ratio must be >= 100%");
+        require(_ratio < initCollateralizationRatio, "Must be < init ratio");
+        minCollateralizationRatio = _ratio;
+    }
+
+    function setLiquidationPenaltyRatio(uint256 _ratio) public {
+        require(_ratio > 0, "Ratio must be > 0");
+        liquidationPenaltyRatio = _ratio;
     }
 
     function deposit(uint256 amount) external returns (uint256) {
@@ -75,7 +92,7 @@ contract LoanPair is ILoanPair {
         require(loans[msg.sender].loanAmount == 0, "Existing loan must be repaid");
         require(availableLoanTokens() >= loanAmount, "Insufficient liquidity");
 
-        uint256 collateralRequired = (loanAmount * collateralizationRatio * MOCK_EXCHANGE_RATE) / 1e20;
+        uint256 collateralRequired = (loanAmount * initCollateralizationRatio * getExchangeRate()) / 1e20;
         
         loans[msg.sender] = Loan({
             borrower: msg.sender,
@@ -106,6 +123,42 @@ contract LoanPair is ILoanPair {
         delete loans[msg.sender];
     }
 
+    function getCurrentCollateralizationRatio(address borrower) public view returns (uint256) {
+        Loan storage loan = loans[borrower];
+        require(loan.loanAmount > 0, "No active loan");
+        
+        uint256 blocksPassed = block.number - loan.initiationTime;
+        uint256 interest = (loan.loanAmount * loan.interestPerBlock * blocksPassed) / 1e18;
+        uint256 totalOwed = loan.loanAmount + interest;
+        
+        return (loan.collateralAmount * 1e18) / (totalOwed * getExchangeRate());
+    }
+
+    function liquidate(address borrower) external {
+        Loan storage loan = loans[borrower];
+        require(loan.loanAmount > 0, "No active loan");
+        
+        uint256 currentRatio = getCurrentCollateralizationRatio(borrower);
+        require(currentRatio < minCollateralizationRatio, "Not liquidatable");
+
+        uint256 blocksPassed = block.number - loan.initiationTime;
+        uint256 interest = (loan.loanAmount * loan.interestPerBlock * blocksPassed) / 1e18;
+        uint256 totalOwed = loan.loanAmount + interest;
+        
+        // Calculate liquidation penalty
+        uint256 penalty = (totalOwed * liquidationPenaltyRatio) / 1000;
+        uint256 totalRequired = totalOwed + penalty;
+
+        // Transfer loan tokens from liquidator
+        require(loanToken.transferFrom(msg.sender, address(this), totalRequired), "Liquidation payment failed");
+        
+        // Transfer collateral to liquidator
+        require(collateralToken.transfer(msg.sender, loan.collateralAmount), "Collateral transfer failed");
+
+        emit Liquidate(borrower, msg.sender, totalRequired, loan.collateralAmount);
+        delete loans[borrower];
+    }
+
     // View functions
     function totalLoanTokens() public view returns (uint256) {
         return loanToken.balanceOf(address(this));
@@ -115,5 +168,14 @@ contract LoanPair is ILoanPair {
         uint256 totalLoaned;
         // Note: This is a simplified version. In production, you'd track total borrowed separately
         return totalLoanTokens() - totalLoaned;
+    }
+
+    function getExchangeRate() public view returns (uint256) {
+        return mockExchangeRate;
+    }
+
+    function setMockExchangeRate(uint256 _rate) external {
+        require(_rate > 0, "Invalid exchange rate");
+        mockExchangeRate = _rate;
     }
 }
