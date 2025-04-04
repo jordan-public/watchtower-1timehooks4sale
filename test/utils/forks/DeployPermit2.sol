@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Copied from https://github.com/uniswapfoundation/v4-template
 pragma solidity ^0.8.17;
 
 import {CommonBase} from "forge-std/Base.sol";

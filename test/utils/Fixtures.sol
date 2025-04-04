@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Copied from https://github.com/uniswapfoundation/v4-template
 pragma solidity ^0.8.24;
 
 import {Currency} from "v4-core/src/types/Currency.sol";
