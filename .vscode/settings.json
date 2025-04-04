@@ -2,6 +2,8 @@
   "solidity.packageDefaultDependenciesContractsDirectory": "src",
   "solidity.packageDefaultDependenciesDirectory": "lib",
   "cSpell.words": [
+    "Chainlink",
+    "overcollateralization",
     "permissionlessly",
     "undercollateralized"
   ]
