@@ -136,8 +136,8 @@ contract WatchtowerTest is Test, Fixtures {
         hook.registerWatcher(
             key,
             true, // directionDown
-            1e18, // thresholdPrice
-            ITarget(address(0)), // target
+            1e20, // thresholdPrice
+            ITarget(address(loanPair)), // target
             targetId,
             0, // callerReward
             0, // poolReward

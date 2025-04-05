@@ -131,7 +131,7 @@ contract WatchList {
         }
         
         // Call the target callback - off for demo!!!
-        //watches[id].target.callback(watches[id].targetId);
+        watches[id].target.callback(watches[id].targetId);
 console.log("Calling target callback - liquidation");
         // Optionally transfer rewards - off for demo!!!
         // if (watches[id].callerReward > 0) {
