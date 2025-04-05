@@ -42,6 +42,8 @@ for this to both the swapper and the pool and drop off.
 - As the price moves, it performs the proper calculation to efficiently trigger the appropriate Watch-ers in constant time ($O(1)$).
 - Cleans up to avoid storage cost and get storage refunds.
 
+![system](./docs/system.png)
+
 ## Use Cases
 
 The Watchtower atomic actions can be used to:
