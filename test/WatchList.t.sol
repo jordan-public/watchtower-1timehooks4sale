@@ -24,14 +24,14 @@ contract WatchListTest is Test {
     IERC20 mockToken;
     
     function setUp() public {
-        watchList = new WatchList(true, 10000); // direction: true (falling), initial price: 10000
+        watchList = new WatchList(true, 10000); // directionDown: true (falling), initial price: 10000
         target = new MockTarget();
         mockToken = IERC20(address(1)); // mock token address
     }
     
     function test_InsertWithoutHint() public {
         // Insert three watches in non-sequential order
-        // For falling prices (direction=true), lower prices should come first
+        // For falling prices (directionDown=true), lower prices should come first
         uint256 id1 = watchList.insert(9000, ITarget(target), 0, 0, mockToken, 0);
         uint256 id2 = watchList.insert(8000, ITarget(target), 0, 0, mockToken, 0);
         uint256 id3 = watchList.insert(8500, ITarget(target), 0, 0, mockToken, 0);

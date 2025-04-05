@@ -8,7 +8,7 @@ import {IERC20} from "forge-std/interfaces/IERC20.sol";
 contract WatchList {
     uint256 private nextId = 1;
     uint256 public lastPrice;
-    bool public direction;
+    bool public directionDown;
     uint256 private lastRemovedPosition;
     uint256 private lastRemovedPrice;
     
@@ -18,8 +18,8 @@ contract WatchList {
     uint256 public head;
     uint256 public tail;
     
-    constructor(bool _direction, uint256 _initialPrice) {
-        direction = _direction;
+    constructor(bool _directionDown, uint256 _initialPrice) {
+        directionDown = _directionDown;
         lastPrice = _initialPrice;
         lastRemovedPrice = _initialPrice;
     }
@@ -36,7 +36,7 @@ contract WatchList {
         
         TWatch memory watch = TWatch({
             id: id,
-            direction: direction,
+            direction: directionDown,
             thresholdPrice: thresholdPrice,
             target: target,
             callerReward: callerReward,
@@ -56,7 +56,7 @@ contract WatchList {
             require(watches[tryInsertAfter].id != 0, "Invalid hint location");
             require(next[tryInsertAfter] != 0, "Cannot insert after tail with hint");
             
-            if (direction) {
+            if (directionDown) {
                 require(
                     watches[tryInsertAfter].thresholdPrice <= thresholdPrice && 
                     watches[next[tryInsertAfter]].thresholdPrice >= thresholdPrice,
@@ -79,16 +79,16 @@ contract WatchList {
         }
         
         // Default insertion logic when no hint is provided
-        if ((direction && thresholdPrice >= watches[tail].thresholdPrice) ||
-            (!direction && thresholdPrice <= watches[tail].thresholdPrice)) {
+        if ((directionDown && thresholdPrice >= watches[tail].thresholdPrice) ||
+            (!directionDown && thresholdPrice <= watches[tail].thresholdPrice)) {
             prev[id] = tail;
             next[tail] = id;
             tail = id;
             return id;
         }
         
-        if ((direction && thresholdPrice <= watches[head].thresholdPrice) ||
-            (!direction && thresholdPrice >= watches[head].thresholdPrice)) {
+        if ((directionDown && thresholdPrice <= watches[head].thresholdPrice) ||
+            (!directionDown && thresholdPrice >= watches[head].thresholdPrice)) {
             next[id] = head;
             prev[head] = id;
             head = id;
@@ -97,8 +97,8 @@ contract WatchList {
         
         uint256 current = head;
         while (current != 0) {
-            if ((direction && thresholdPrice <= watches[next[current]].thresholdPrice) ||
-                (!direction && thresholdPrice >= watches[next[current]].thresholdPrice)) {
+            if ((directionDown && thresholdPrice <= watches[next[current]].thresholdPrice) ||
+                (!directionDown && thresholdPrice >= watches[next[current]].thresholdPrice)) {
                 next[id] = next[current];
                 prev[id] = current;
                 prev[next[current]] = id;
@@ -150,7 +150,7 @@ contract WatchList {
         uint256 current;
         
         // If price moved in opposite direction of what we're watching, reset position
-        if ((direction && priceIncreased) || (!direction && !priceIncreased)) {
+        if ((directionDown && priceIncreased) || (!directionDown && !priceIncreased)) {
             current = head;
             lastRemovedPosition = 0;
             lastRemovedPrice = newPrice;
@@ -163,14 +163,14 @@ contract WatchList {
             TWatch memory watch = watches[current];
             uint256 nextWatch = next[current];
             
-            if ((direction && !priceIncreased && lastPrice >= watch.thresholdPrice && newPrice <= watch.thresholdPrice) ||
-                (!direction && priceIncreased && lastPrice <= watch.thresholdPrice && newPrice >= watch.thresholdPrice)) {
+            if ((directionDown && !priceIncreased && lastPrice >= watch.thresholdPrice && newPrice <= watch.thresholdPrice) ||
+                (!directionDown && priceIncreased && lastPrice <= watch.thresholdPrice && newPrice >= watch.thresholdPrice)) {
                 watch.target.callback();
                 lastRemovedPosition = nextWatch;
                 lastRemovedPrice = watch.thresholdPrice;
                 this.remove(current);
-            } else if ((direction && watch.thresholdPrice > newPrice) ||
-                     (!direction && watch.thresholdPrice < newPrice)) {
+            } else if ((directionDown && watch.thresholdPrice > newPrice) ||
+                     (!directionDown && watch.thresholdPrice < newPrice)) {
                 // We've gone past possible triggers, no need to continue
                 break;
             }
