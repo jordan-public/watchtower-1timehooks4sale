@@ -20,6 +20,10 @@ import {EasyPosm} from "./utils/EasyPosm.sol";
 import {Fixtures} from "./utils/Fixtures.sol";
 import {MockERC20} from "v4-core/lib/solmate/src/test/utils/mocks/MockERC20.sol";
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import {LoanPairFactory} from "../src/LoanPairFactory.sol";
+import {ILoanPair} from "../src/interfaces/ILoanPair.sol";
+import {ITarget} from "../src/interfaces/ITarget.sol";
+import {LoanPair} from "../src/LoanPair.sol";
 
 contract WatchtowerTest is Test, Fixtures {
     using EasyPosm for IPositionManager;
@@ -34,15 +38,26 @@ contract WatchtowerTest is Test, Fixtures {
     int24 tickLower;
     int24 tickUpper;
 
+    MockERC20 public loanToken;
+    MockERC20 public collateralToken;
+    LoanPairFactory public factory;
+    ILoanPair public loanPair;
+    address alice = address(0x1);
+    address bob = address(0x2);
+
     function setUp() public {
         // creates the pool manager, utility routers, and test tokens
         deployFreshManagerAndRouters();
         (Currency currency0, Currency currency1) = deployMintAndApprove2Currencies();
-        MockERC20 Token0 = MockERC20(Currency.unwrap(currency0));
-        MockERC20 Token1 = MockERC20(Currency.unwrap(currency1));
+        loanToken = MockERC20(Currency.unwrap(currency0));
+        collateralToken = MockERC20(Currency.unwrap(currency1));
 
-        Token0.mint(address(this), 100e18);
-        Token1.mint(address(this), 100e18);
+        alice = address(0x1);
+        bob = address(0x2);
+        loanToken.mint(alice, 1000e18);
+        collateralToken.mint(alice, 1000e18);
+        loanToken.mint(bob, 1000e18);
+        collateralToken.mint(bob, 1000e18);
 
         deployAndApprovePosm(manager);
 
@@ -85,9 +100,53 @@ contract WatchtowerTest is Test, Fixtures {
             block.timestamp,
             ZERO_BYTES
         );
+
+        // Create a LendingPair
+        factory = new LoanPairFactory();
+        loanPair = factory.createLoanPair(IERC20(address(loanToken)), IERC20(address(collateralToken)));
+        //LoanPair(address(loanPair)).setPoolKey(key);
+        //LoanPair(address(loanPair)).setWatchtower(hook);
+        //LoanPair(address(loanPair)).setExchangeRate(1e18); // Initial 1:1 exchange rate - mock oracle
+        
+        // Deposit to lending pair
+        vm.startPrank(alice);
+        loanToken.approve(address(loanPair), type(uint256).max);
+        collateralToken.approve(address(loanPair), type(uint256).max);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        loanToken.approve(address(loanPair), type(uint256).max);
+        collateralToken.approve(address(loanPair), type(uint256).max);
+        vm.stopPrank();
     }
 
     function testWatchtowerHooks() public {
+        // Alice deposits into lending pool
+        vm.startPrank(alice);
+        loanPair.deposit(100e18);
+        vm.stopPrank();
+
+        // Bob borrows
+        vm.startPrank(bob);
+        loanPair.borrow(50e18);
+        vm.stopPrank();
+
+        uint256 targetId = LoanPair(address(loanPair)).setTargetId2Borrower(bob);
+
+        hook.registerWatcher(
+            key,
+            true, // directionDown
+            1e20, // thresholdPrice
+            ITarget(address(loanPair)), // target
+            targetId,
+            0, // callerReward
+            0, // poolReward
+            IERC20(address(collateralToken)), // poolRewardToken
+            0 // tryInsertAfter
+        );
+
+        LoanPair(address(loanPair)).setMockExchangeRate(5e17); // 0.5, collateral worth less - mock oracle
+        
         // positions were created in setup()
         assertEq(hook.afterSwapCount(poolId), 0);
 

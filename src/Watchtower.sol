@@ -112,7 +112,7 @@ contract Watchtower is BaseHook, IWatchtower {
         PoolId poolId = key.toId();
         (uint160 sqrtNewPriceX96, , , ) = poolManager.getSlot0(poolId);
         uint256 newPrice = FullMath.mulDiv(uint256(sqrtNewPriceX96) * uint256(sqrtNewPriceX96), 1e18, 1 << 192);
-console.log("New price: %s", newPrice);
+        //console.log("New price: %s", newPrice);
 
         // Catch up on WatchList of callbacks in both directions
         WatchList downList = downListByPool[poolId];
