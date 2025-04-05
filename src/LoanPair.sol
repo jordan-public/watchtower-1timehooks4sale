@@ -46,12 +46,11 @@ contract LoanPair is ILoanPair, ITarget {
         mockExchangeRate = 1e18; // Initial 1:1 exchange rate
     }
 
-    function setPoolKey(PoolKey calldata key) external {
-        poolKey = key;
-    }
-
-    function setWatchtower(IWatchtower _watchtower) external {
-        watchtower = _watchtower;
+    // This needs security hardening!!!
+    function setTargetId2Borrower(address borrower) external returns (uint256 targetId) {
+        targetId = lastTargetId;
+        targetId2Borrower[targetId] = borrower;
+        lastTargetId++;
     }
 
     function setInterestRate(uint256 _interestPerBlock) public {
@@ -121,16 +120,6 @@ contract LoanPair is ILoanPair, ITarget {
 
         require(collateralToken.transferFrom(msg.sender, address(this), collateralRequired), "Collateral transfer failed");
         require(loanToken.transfer(msg.sender, loanAmount), "Loan transfer failed");
-
-        targetId2Borrower[lastTargetId] = msg.sender;
-        lastTargetId++;
-
-        uint256 id = lastTargetId;
-        targetId2Borrower[id] = msg.sender;
-
-//!!!
-        // watchtower.registerWatcher(poolKey, true/*directionDown*/, 
-        //     thresholdPrice, address(this), id, callerReward, poolReward, poolRewardToken, 0);
 
         emit Borrow(msg.sender, loanAmount, collateralRequired);
     }
