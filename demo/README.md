@@ -1,6 +1,6 @@
 # Demo Video and Deployment Addresses
 
-## The demo video is [here]() and on [YouTube]().
+## The demo video is [here](./Watchtower720p.mov) and on [YouTube](https://youtu.be/KvgtkRz6jk0).
 
 ## Deployment Addresses
 
