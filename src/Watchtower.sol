@@ -24,16 +24,58 @@ contract Watchtower is BaseHook {
     // a single hook contract should be able to service multiple pools
     // ---------------------------------------------------------------
 
-    mapping(PoolId => uint256 count) public afterSwapCount;
+    mapping(PoolId => uint256 count) public afterSwapCount; // For testing purposes only
 
-    WatchList public upList;
-    WatchList public downList;
-    
+    mapping(PoolId => WatchList) public upListByPool;
+    mapping(PoolId => WatchList) public downListByPool;
+
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
         poolManager = _poolManager;
-        uint256 price = 1e18; // Placeholder for the initial price!!! Needs to be discovered!!!
-        upList = new WatchList(true, price);
-        downList = new WatchList(false, price);
+    }
+
+    function registerWatcher(
+        PoolKey calldata key,
+        bool directionDown,
+        uint256 thresholdPrice,
+        ITarget target,
+        uint256 callerReward,
+        uint256 poolReward,
+        IERC20 poolRewardToken,
+        uint256 tryInsertAfter // 0 means no hint
+    ) external {
+        // Check if the price is above or below the current price
+        PoolId poolId = key.toId();
+        (uint160 sqrtPriceX96, , , ) = poolManager.getSlot0(poolId);
+        uint256 currentPrice = FullMath.mulDiv(uint256(sqrtPriceX96) * uint256(sqrtPriceX96), 1e18, 1 << 192);
+        
+        if (directionDown) {
+            WatchList watchList = downListByPool[poolId];
+            if (WatchList(address(0)) == watchList) {
+                watchList = new WatchList(directionDown, currentPrice);
+                downListByPool[poolId] = watchList;
+            }
+            watchList.insert(thresholdPrice, target, callerReward, poolReward, poolRewardToken, tryInsertAfter);
+        } else {
+            WatchList watchList = upListByPool[poolId];
+            if (WatchList(address(0)) == watchList) {
+                watchList = new WatchList(directionDown, currentPrice);
+                upListByPool[poolId] = watchList;
+            }
+            watchList.insert(thresholdPrice, target, callerReward, poolReward, poolRewardToken, tryInsertAfter);
+        }
+    }
+
+    function removeWatcher(PoolKey calldata key, bool directionDown, uint256 id) external {
+        PoolId poolId = key.toId();
+        if (directionDown) {
+            WatchList downList = downListByPool[poolId];
+            require(WatchList(address(0)) != downList, "poolId not found in downList");
+            downList.remove(id);
+        } else {
+            WatchList upList = upListByPool[poolId];
+            require(WatchList(address(0)) != upList, "poolId not found in upList");
+            upList.remove(id);
+        }
     }
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
@@ -65,13 +107,20 @@ contract Watchtower is BaseHook {
         returns (bytes4, int128)
     {
         // Discover the new price.
-        (uint160 sqrtNewPriceX96, , , ) = poolManager.getSlot0(key.toId());
+        PoolId poolId = key.toId();
+        (uint160 sqrtNewPriceX96, , , ) = poolManager.getSlot0(poolId);
         uint256 newPrice = FullMath.mulDiv(uint256(sqrtNewPriceX96) * uint256(sqrtNewPriceX96), 1e18, 1 << 192);
 console.log("New price: %s", newPrice);
 
-        // Catch up on WatchList of callbacks in both directions!!!
-        upList.catchUp(newPrice);
-        downList.catchUp(newPrice);
+        // Catch up on WatchList of callbacks in both directions
+        WatchList downList = downListByPool[poolId];
+        if (WatchList(address(0)) != downList) {
+            downList.catchUp(newPrice);
+        }
+        WatchList upList = upListByPool[poolId];
+        if (WatchList(address(0)) != upList) {
+            upList.catchUp(newPrice);
+        }
 
         afterSwapCount[key.toId()]++;
         return (BaseHook.afterSwap.selector, 0);
