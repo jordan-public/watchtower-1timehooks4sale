@@ -10,6 +10,8 @@ import {PoolId, PoolIdLibrary} from "v4-core/src/types/PoolId.sol";
 import {BalanceDelta} from "v4-core/src/types/BalanceDelta.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/src/types/BeforeSwapDelta.sol";
 
+import "./WatchList.sol";
+
 contract Watchtower is BaseHook {
     using PoolIdLibrary for PoolKey;
 
@@ -24,7 +26,14 @@ contract Watchtower is BaseHook {
     mapping(PoolId => uint256 count) public beforeAddLiquidityCount;
     mapping(PoolId => uint256 count) public beforeRemoveLiquidityCount;
 
-    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
+    WatchList public upList;
+    WatchList public downList;
+
+    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
+        uint256 price = 1e18; // Placeholder for the initial price!!! Needs to be discovered!!!
+        upList = new WatchList(true, price);
+        downList = new WatchList(false, price);
+    }
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
@@ -54,6 +63,13 @@ contract Watchtower is BaseHook {
         override
         returns (bytes4, int128)
     {
+        // Discover the new price!!!
+        //? (uint160 newPrice, , ) = manager.getSqrtPriceX96(key);
+        uint256 newPrice = 1e18; // Placeholder for the new price!!! Needs to be disvcovered!
+        // Catch up on WatchList of callbacks in both directions!!!
+        upList.catchUp(newPrice);
+        downList.catchUp(newPrice);
+
         afterSwapCount[key.toId()]++;
         return (BaseHook.afterSwap.selector, 0);
     }
