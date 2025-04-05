@@ -2,34 +2,35 @@
 pragma solidity ^0.8.24;
 
 import {BaseHook} from "v4-periphery/src/utils/BaseHook.sol";
-
 import {Hooks} from "v4-core/src/libraries/Hooks.sol";
 import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/src/types/PoolId.sol";
 import {BalanceDelta} from "v4-core/src/types/BalanceDelta.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/src/types/BeforeSwapDelta.sol";
+import {StateLibrary} from "v4-core/src/libraries/StateLibrary.sol";
+import {TickMath} from "v4-core/src/libraries/TickMath.sol";
+import {FullMath} from "v4-core/src/libraries/FullMath.sol";
+import {console} from "forge-std/console.sol";
 
 import "./WatchList.sol";
 
 contract Watchtower is BaseHook {
     using PoolIdLibrary for PoolKey;
+    using StateLibrary for IPoolManager;
 
     // NOTE: ---------------------------------------------------------
     // state variables should typically be unique to a pool
     // a single hook contract should be able to service multiple pools
     // ---------------------------------------------------------------
 
-    mapping(PoolId => uint256 count) public beforeSwapCount;
     mapping(PoolId => uint256 count) public afterSwapCount;
-
-    mapping(PoolId => uint256 count) public beforeAddLiquidityCount;
-    mapping(PoolId => uint256 count) public beforeRemoveLiquidityCount;
 
     WatchList public upList;
     WatchList public downList;
-
+    
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
+        poolManager = _poolManager;
         uint256 price = 1e18; // Placeholder for the initial price!!! Needs to be discovered!!!
         upList = new WatchList(true, price);
         downList = new WatchList(false, price);
@@ -63,9 +64,11 @@ contract Watchtower is BaseHook {
         override
         returns (bytes4, int128)
     {
-        // Discover the new price!!!
-        //? (uint160 newPrice, , ) = manager.getSqrtPriceX96(key);
-        uint256 newPrice = 1e18; // Placeholder for the new price!!! Needs to be disvcovered!
+        // Discover the new price.
+        (uint160 sqrtNewPriceX96, , , ) = poolManager.getSlot0(key.toId());
+        uint256 newPrice = FullMath.mulDiv(uint256(sqrtNewPriceX96) * uint256(sqrtNewPriceX96), 1e18, 1 << 192);
+console.log("New price: %s", newPrice);
+
         // Catch up on WatchList of callbacks in both directions!!!
         upList.catchUp(newPrice);
         downList.catchUp(newPrice);
