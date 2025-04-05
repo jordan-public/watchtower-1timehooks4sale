@@ -18,6 +18,8 @@ import {LiquidityAmounts} from "v4-core/test/utils/LiquidityAmounts.sol";
 import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol";
 import {EasyPosm} from "./utils/EasyPosm.sol";
 import {Fixtures} from "./utils/Fixtures.sol";
+import {MockERC20} from "v4-core/lib/solmate/src/test/utils/mocks/MockERC20.sol";
+import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 contract WatchtowerTest is Test, Fixtures {
     using EasyPosm for IPositionManager;
@@ -35,7 +37,12 @@ contract WatchtowerTest is Test, Fixtures {
     function setUp() public {
         // creates the pool manager, utility routers, and test tokens
         deployFreshManagerAndRouters();
-        deployMintAndApprove2Currencies();
+        (Currency currency0, Currency currency1) = deployMintAndApprove2Currencies();
+        MockERC20 Token0 = MockERC20(Currency.unwrap(currency0));
+        MockERC20 Token1 = MockERC20(Currency.unwrap(currency1));
+
+        Token0.mint(address(this), 100e18);
+        Token1.mint(address(this), 100e18);
 
         deployAndApprovePosm(manager);
 
