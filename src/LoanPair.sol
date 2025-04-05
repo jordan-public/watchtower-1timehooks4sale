@@ -5,6 +5,7 @@ import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {ILoanPair} from "./interfaces/ILoanPair.sol";
 import {IWatchtower} from "./interfaces/IWatchtower.sol";
 import {ITarget} from "./interfaces/ITarget.sol";
+import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 
 contract LoanPair is ILoanPair, ITarget {
     IERC20 public immutable loanToken;
@@ -28,6 +29,8 @@ contract LoanPair is ILoanPair, ITarget {
     uint256 lastTargetId;
     mapping(uint256 => address) targetId2Borrower;
 
+    PoolKey public poolKey;
+
     constructor(
         IERC20 _loanToken, 
         IERC20 _collateralToken
@@ -41,6 +44,10 @@ contract LoanPair is ILoanPair, ITarget {
         setMinCollateralizationRatio(110); // 110% minimum collateralization ratio
         setLiquidationPenaltyRatio(50); // 5% liquidation penalty
         mockExchangeRate = 1e18; // Initial 1:1 exchange rate
+    }
+
+    function setPoolKey(PoolKey calldata key) external {
+        poolKey = key;
     }
 
     function setWatchtower(IWatchtower _watchtower) external {
@@ -117,6 +124,12 @@ contract LoanPair is ILoanPair, ITarget {
 
         targetId2Borrower[lastTargetId] = msg.sender;
         lastTargetId++;
+
+        uint256 id = lastTargetId;
+        targetId2Borrower[id] = msg.sender;
+
+        watchtower.registerWatcher(poolKey, true/*directionDown*/, 
+            thresholdPrice, address(this), id, callerReward, poolReward, poolRewardToken, 0);
 
         emit Borrow(msg.sender, loanAmount, collateralRequired);
     }
