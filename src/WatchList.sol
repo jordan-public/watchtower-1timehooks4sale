@@ -1,0 +1,170 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity ^0.8.24;
+
+import "./types/TWatch.sol";
+import "./interfaces/ITarget.sol";
+import {IERC20} from "forge-std/interfaces/IERC20.sol";
+
+contract WatchList {
+    uint256 private nextId = 1;
+    uint256 public lastPrice;
+    bool public direction;
+    uint256 private lastRemovedPosition;
+    uint256 private lastRemovedPrice;
+    
+    mapping(uint256 => TWatch) public watches;
+    mapping(uint256 => uint256) public next;
+    mapping(uint256 => uint256) public prev;
+    uint256 public head;
+    uint256 public tail;
+    
+    constructor(bool _direction, uint256 _initialPrice) {
+        direction = _direction;
+        lastPrice = _initialPrice;
+        lastRemovedPrice = _initialPrice;
+    }
+    
+    function insert(
+        uint256 thresholdPrice,
+        ITarget target,
+        uint256 callerReward,
+        uint256 poolReward,
+        IERC20 poolRewardToken,
+        uint256 tryInsertAfter
+    ) external returns (uint256) {
+        uint256 id = nextId++;
+        
+        TWatch memory watch = TWatch({
+            id: id,
+            direction: direction,
+            thresholdPrice: thresholdPrice,
+            target: target,
+            callerReward: callerReward,
+            poolReward: poolReward,
+            poolRewardToken: poolRewardToken
+        });
+        
+        watches[id] = watch;
+        
+        if (head == 0) {
+            head = tail = id;
+            return id;
+        }
+
+        // If a hint location is provided, verify and use it
+        if (tryInsertAfter != 0) {
+            require(watches[tryInsertAfter].id != 0, "Invalid hint location");
+            require(next[tryInsertAfter] != 0, "Cannot insert after tail with hint");
+            
+            if (direction) {
+                require(
+                    watches[tryInsertAfter].thresholdPrice <= thresholdPrice && 
+                    watches[next[tryInsertAfter]].thresholdPrice >= thresholdPrice,
+                    "Incorrect hint location"
+                );
+            } else {
+                require(
+                    watches[tryInsertAfter].thresholdPrice >= thresholdPrice && 
+                    watches[next[tryInsertAfter]].thresholdPrice <= thresholdPrice,
+                    "Incorrect hint location"
+                );
+            }
+            
+            // Insert at the hinted position
+            next[id] = next[tryInsertAfter];
+            prev[id] = tryInsertAfter;
+            prev[next[tryInsertAfter]] = id;
+            next[tryInsertAfter] = id;
+            return id;
+        }
+        
+        // Default insertion logic when no hint is provided
+        if ((direction && thresholdPrice >= watches[tail].thresholdPrice) ||
+            (!direction && thresholdPrice <= watches[tail].thresholdPrice)) {
+            prev[id] = tail;
+            next[tail] = id;
+            tail = id;
+            return id;
+        }
+        
+        if ((direction && thresholdPrice <= watches[head].thresholdPrice) ||
+            (!direction && thresholdPrice >= watches[head].thresholdPrice)) {
+            next[id] = head;
+            prev[head] = id;
+            head = id;
+            return id;
+        }
+        
+        uint256 current = head;
+        while (current != 0) {
+            if ((direction && thresholdPrice <= watches[next[current]].thresholdPrice) ||
+                (!direction && thresholdPrice >= watches[next[current]].thresholdPrice)) {
+                next[id] = next[current];
+                prev[id] = current;
+                prev[next[current]] = id;
+                next[current] = id;
+                return id;
+            }
+            current = next[current];
+        }
+        
+        return id;
+    }
+    
+    function remove(uint256 id) external {
+        require(watches[id].id != 0, "Watch not found");
+        
+        if (head == tail) {
+            head = tail = 0;
+        } else if (id == head) {
+            head = next[head];
+            prev[head] = 0;
+        } else if (id == tail) {
+            tail = prev[tail];
+            next[tail] = 0;
+        } else {
+            next[prev[id]] = next[id];
+            prev[next[id]] = prev[id];
+        }
+        
+        delete watches[id];
+        delete next[id];
+        delete prev[id];
+    }
+    
+    function catchUp(uint256 newPrice) external {
+        bool priceIncreased = newPrice > lastPrice;
+        uint256 current;
+        
+        // If price moved in opposite direction of what we're watching, reset position
+        if ((direction && priceIncreased) || (!direction && !priceIncreased)) {
+            current = head;
+            lastRemovedPosition = 0;
+            lastRemovedPrice = newPrice;
+        } else {
+            // Continue from last position if moving in same direction
+            current = (lastRemovedPosition != 0) ? lastRemovedPosition : head;
+        }
+        
+        while (current != 0) {
+            TWatch memory watch = watches[current];
+            uint256 nextWatch = next[current];
+            
+            if ((direction && !priceIncreased && lastPrice >= watch.thresholdPrice && newPrice <= watch.thresholdPrice) ||
+                (!direction && priceIncreased && lastPrice <= watch.thresholdPrice && newPrice >= watch.thresholdPrice)) {
+                watch.target.callback();
+                lastRemovedPosition = nextWatch;
+                lastRemovedPrice = watch.thresholdPrice;
+                this.remove(current);
+            } else if ((direction && watch.thresholdPrice > newPrice) ||
+                     (!direction && watch.thresholdPrice < newPrice)) {
+                // We've gone past possible triggers, no need to continue
+                break;
+            }
+            
+            current = nextWatch;
+        }
+        
+        lastPrice = newPrice;
+    }
+}
