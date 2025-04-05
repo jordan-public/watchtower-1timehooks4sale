@@ -6,8 +6,8 @@
 
 The Watchtower Hook Contract is deployed at the following addresses:
 
-Base Sepolia: 0x3160823d4bbB9FEc42C55bb0D7d5bae18beA0040
+Base Sepolia: 0x2FF03631adB0a022Da831c932A1A3dB32b058040 (using Nodit)
 
-Polygon Cardona: 0xAC598dD78fa19DE38caC2E1647dc14A55CB18040
+Polygon Amboy: 0x817AC732901c39FC048A549243e3722321d44040 (using Nodit)
 
-Polygon Amboy: 0xAC598dD78fa19DE38caC2E1647dc14A55CB18040
+Polygon Cardona: 0xAC598dD78fa19DE38caC2E1647dc14A55CB18040 (using Cardona RPC)

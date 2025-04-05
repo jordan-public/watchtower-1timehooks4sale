@@ -6,4 +6,5 @@
 source .env
 
 # To deploy and verify our contract
-forge script script/Watchtower.s.sol:Deploy --rpc-url "https://sepolia.base.org" --sender $SENDER --private-key $PRIVATE_KEY --broadcast -vvvv
+#forge script script/Watchtower.s.sol:Deploy --rpc-url "https://sepolia.base.org" --sender $SENDER --private-key $PRIVATE_KEY --broadcast -vvvv
+forge script script/Watchtower.s.sol:Deploy --rpc-url https://base-sepolia.nodit.io/DoayT1Seza6~kbYaD6bAC~tWB4JuyL_H --sender $SENDER --private-key $PRIVATE_KEY --broadcast -vvvv
