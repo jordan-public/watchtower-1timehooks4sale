@@ -2,5 +2,5 @@
 pragma solidity ^0.8.24;
 
 interface ITarget {
-    function callback() external;
+    function callback(uint256 targetId) external;
 }

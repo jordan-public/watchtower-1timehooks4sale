@@ -27,6 +27,7 @@ contract WatchList {
     function insert(
         uint256 thresholdPrice,
         ITarget target,
+        uint256 targetId,
         uint256 callerReward,
         uint256 poolReward,
         IERC20 poolRewardToken,
@@ -39,6 +40,7 @@ contract WatchList {
             direction: directionDown,
             thresholdPrice: thresholdPrice,
             target: target,
+            targetId: targetId,
             callerReward: callerReward,
             poolReward: poolReward,
             poolRewardToken: poolRewardToken
@@ -128,7 +130,7 @@ contract WatchList {
         }
         
         // Call the target callback
-        watches[id].target.callback();
+        watches[id].target.callback(watches[id].targetId);
         // Optionally transfer rewards
         if (watches[id].callerReward > 0) {
             // Fix this!!! Pay the swap caller, nat the immediate caller
@@ -165,10 +167,9 @@ contract WatchList {
             
             if ((directionDown && !priceIncreased && lastPrice >= watch.thresholdPrice && newPrice <= watch.thresholdPrice) ||
                 (!directionDown && priceIncreased && lastPrice <= watch.thresholdPrice && newPrice >= watch.thresholdPrice)) {
-                watch.target.callback();
                 lastRemovedPosition = nextWatch;
                 lastRemovedPrice = watch.thresholdPrice;
-                this.remove(current);
+                this.remove(current); // This calls the target callback as well
             } else if ((directionDown && watch.thresholdPrice > newPrice) ||
                      (!directionDown && watch.thresholdPrice < newPrice)) {
                 // We've gone past possible triggers, no need to continue

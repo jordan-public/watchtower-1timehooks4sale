@@ -14,8 +14,9 @@ import {FullMath} from "v4-core/src/libraries/FullMath.sol";
 import {console} from "forge-std/console.sol";
 
 import "./WatchList.sol";
+import "./interfaces/IWatchtower.sol";
 
-contract Watchtower is BaseHook {
+contract Watchtower is BaseHook, IWatchtower {
     using PoolIdLibrary for PoolKey;
     using StateLibrary for IPoolManager;
 
@@ -38,6 +39,7 @@ contract Watchtower is BaseHook {
         bool directionDown,
         uint256 thresholdPrice,
         ITarget target,
+        uint256 targetId,
         uint256 callerReward,
         uint256 poolReward,
         IERC20 poolRewardToken,
@@ -54,14 +56,14 @@ contract Watchtower is BaseHook {
                 watchList = new WatchList(directionDown, currentPrice);
                 downListByPool[poolId] = watchList;
             }
-            watchList.insert(thresholdPrice, target, callerReward, poolReward, poolRewardToken, tryInsertAfter);
+            watchList.insert(thresholdPrice, target, targetId, callerReward, poolReward, poolRewardToken, tryInsertAfter);
         } else {
             WatchList watchList = upListByPool[poolId];
             if (WatchList(address(0)) == watchList) {
                 watchList = new WatchList(directionDown, currentPrice);
                 upListByPool[poolId] = watchList;
             }
-            watchList.insert(thresholdPrice, target, callerReward, poolReward, poolRewardToken, tryInsertAfter);
+            watchList.insert(thresholdPrice, target, targetId, callerReward, poolReward, poolRewardToken, tryInsertAfter);
         }
     }
 

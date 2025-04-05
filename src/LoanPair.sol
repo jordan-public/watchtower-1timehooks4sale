@@ -3,10 +3,13 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
 import {ILoanPair} from "./interfaces/ILoanPair.sol";
+import {IWatchtower} from "./interfaces/IWatchtower.sol";
+import {ITarget} from "./interfaces/ITarget.sol";
 
-contract LoanPair is ILoanPair {
+contract LoanPair is ILoanPair, ITarget {
     IERC20 public immutable loanToken;
     IERC20 public immutable collateralToken;
+    IWatchtower watchtower;
 
     // Vault state
     uint256 public totalShares;
@@ -22,6 +25,9 @@ contract LoanPair is ILoanPair {
     // Exchange rate state
     uint256 private mockExchangeRate;
 
+    uint256 lastTargetId;
+    mapping(uint256 => address) targetId2Borrower;
+
     constructor(
         IERC20 _loanToken, 
         IERC20 _collateralToken
@@ -35,6 +41,10 @@ contract LoanPair is ILoanPair {
         setMinCollateralizationRatio(110); // 110% minimum collateralization ratio
         setLiquidationPenaltyRatio(50); // 5% liquidation penalty
         mockExchangeRate = 1e18; // Initial 1:1 exchange rate
+    }
+
+    function setWatchtower(IWatchtower _watchtower) external {
+        watchtower = _watchtower;
     }
 
     function setInterestRate(uint256 _interestPerBlock) public {
@@ -105,6 +115,9 @@ contract LoanPair is ILoanPair {
         require(collateralToken.transferFrom(msg.sender, address(this), collateralRequired), "Collateral transfer failed");
         require(loanToken.transfer(msg.sender, loanAmount), "Loan transfer failed");
 
+        targetId2Borrower[lastTargetId] = msg.sender;
+        lastTargetId++;
+
         emit Borrow(msg.sender, loanAmount, collateralRequired);
     }
 
@@ -134,7 +147,11 @@ contract LoanPair is ILoanPair {
         return (loan.collateralAmount * 1e18) / (totalOwed * getExchangeRate());
     }
 
-    function liquidate(address borrower) external {
+    function callback(uint256 targetId) external {
+        liquidate(targetId2Borrower[targetId]);
+    }
+
+    function liquidate(address borrower) public {
         Loan storage loan = loans[borrower];
         require(loan.loanAmount > 0, "No active loan");
         

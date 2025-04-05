@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "forge-std/interfaces/IERC20.sol";
+import {IWatchtower} from "./IWatchtower.sol";
 
 interface ILoanPair {
     struct Loan {
@@ -31,6 +32,7 @@ interface ILoanPair {
     );
     function interestPerBlock() external view returns (uint256);
 
+    function setWatchtower(IWatchtower _watchtower) external;
     function setInterestRate(uint256 _interestPerBlock) external;
     function setInitCollateralizationRatio(uint256 _ratio) external;
     function setMinCollateralizationRatio(uint256 _ratio) external;
