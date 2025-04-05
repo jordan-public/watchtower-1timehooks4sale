@@ -32,6 +32,7 @@ interface ILoanPair {
     );
     function interestPerBlock() external view returns (uint256);
 
+    function setWatchtower(IWatchtower _watchtower) external;
     function setInterestRate(uint256 _interestPerBlock) external;
     function setInitCollateralizationRatio(uint256 _ratio) external;
     function setMinCollateralizationRatio(uint256 _ratio) external;
