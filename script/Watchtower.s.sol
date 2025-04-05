@@ -24,6 +24,10 @@ contract Deploy is Script {
             poolManagerAddress = 0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408;
         } else if (block.chainid == 137) { // Polygon
             poolManagerAddress = 0x67366782805870060151383F4BbFF9daB53e5cD6;
+        } else if (block.chainid == 2442) { // Polygon Cardona
+            poolManagerAddress = 0x67366782805870060151383F4BbFF9daB53e5cD6;
+        } else if (block.chainid == 80002) { // Polygon Amboy
+            poolManagerAddress = 0x67366782805870060151383F4BbFF9daB53e5cD6;
         } else if (block.chainid == 1301) { // Unichain Sepolia
             poolManagerAddress = 0x00B036B58a818B1BC34d502D3fE730Db729e62AC;
         } else {
