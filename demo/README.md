@@ -1,6 +1,6 @@
 # Demo Video and Deployment Addresses
 
-## The demo video is [HERE]() and on [YouTube]().
+## The demo video is [here]() and on [YouTube]().
 
 ## Deployment Addresses
 
