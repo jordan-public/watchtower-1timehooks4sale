@@ -127,6 +127,19 @@ contract WatchList {
             prev[next[id]] = prev[id];
         }
         
+        // Call the target callback
+        watches[id].target.callback();
+        // Optionally transfer rewards
+        if (watches[id].callerReward > 0) {
+            // Fix this!!! Pay the swap caller, nat the immediate caller
+            payable(msg.sender).transfer(watches[id].callerReward);
+        }
+        if (watches[id].poolReward > 0) {
+            // Fix this!!! Pay the pool, not the immediate caller
+            watches[id].poolRewardToken.transfer(msg.sender, watches[id].poolReward);
+        }
+
+        // Clean up the watch
         delete watches[id];
         delete next[id];
         delete prev[id];
