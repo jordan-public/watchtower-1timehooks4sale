@@ -128,8 +128,9 @@ contract LoanPair is ILoanPair, ITarget {
         uint256 id = lastTargetId;
         targetId2Borrower[id] = msg.sender;
 
-        watchtower.registerWatcher(poolKey, true/*directionDown*/, 
-            thresholdPrice, address(this), id, callerReward, poolReward, poolRewardToken, 0);
+//!!!
+        // watchtower.registerWatcher(poolKey, true/*directionDown*/, 
+        //     thresholdPrice, address(this), id, callerReward, poolReward, poolRewardToken, 0);
 
         emit Borrow(msg.sender, loanAmount, collateralRequired);
     }
