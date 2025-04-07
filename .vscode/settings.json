@@ -3,6 +3,7 @@
   "solidity.packageDefaultDependenciesDirectory": "lib",
   "cSpell.words": [
     "Chainlink",
+    "Nodit",
     "overcollateralization",
     "permissionlessly",
     "undercollateralized"

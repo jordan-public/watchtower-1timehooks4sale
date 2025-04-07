@@ -1,3 +1,10 @@
+[This project, (Watchtower)](https://ethglobal.com/showcase/watchtower-d2c1o) won the following prizes at the [ETHGlobal Taipei 2025](https://ethglobal.com/events/taipei) hackathon:
+
+🥇 [Uniswap Foundation - Uniswap v4 Hook Integrations 1st place](https://ethglobal.com/showcase/watchtower-d2c1o)
+
+🥈 [Nodit - Best Multi-chain App with Nodit's Web3 Data API 2nd place](https://ethglobal.com/showcase/watchtower-d2c1o)
+
+
 # Watchtower - One-time Hooks for Sale
 
 The demo instructions and video are [here](./demo/README.md).
